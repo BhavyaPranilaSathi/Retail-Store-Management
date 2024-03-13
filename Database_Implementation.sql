@@ -535,7 +535,15 @@ END
 ALTER TABLE dbo.Product ADD CONSTRAINT ProductPriceAndQtyCheckStatus 
 						CHECK(dbo.ProductPriceAndQtyCheck(ProductPrice, ProductUnitInStock) = 1);
 
-				
+--Test Case
+INSERT INTO dbo.Product (ProductID, ProductName, ProductDesc, ProductPrice, ProductUnitInStock, ProductCategoryID)
+VALUES
+(2, 'Toys', 'Child Play Things', -5.25, 50, 2); 
+
+
+INSERT INTO dbo.Product (ProductID, ProductName, ProductDesc, ProductPrice, ProductUnitInStock, ProductCategoryID)
+VALUES (3, 'Laptop', 'Electronics', 8.75, -20, 3);
+
 ------Vendor cannot supply products before contract start date ----------------------------------
 
 CREATE TRIGGER VenderCntrctStrtDateCheck
@@ -555,6 +563,12 @@ BEGIN
 		END	
 END
 
+-- Test Case
+INSERT INTO dbo.Vendor (VendorID, VendorName, VendorCotractStrtDate) 
+VALUES (203, 'Vendor A', DATEADD(DAY, 1, GETDATE()));
+
+INSERT INTO dbo.ProductVendors (VendorID, ProductID)
+VALUES(203,707);
 
 --- If customer has not bought that product, customer cannot review about that product 
 
@@ -582,10 +596,6 @@ END
 INSERT INTO CustomerFeedback VALUES (18,'2023-07-23',5,'good',20260,680);
 
 
---Vendor endDate can not be previous than startDate 
-     -- Code with CHECK constraint  as function
-
-
 -----Computed Columns
 
 ----Once delivery end date is recorded mark delivery status as delivered
@@ -607,6 +617,16 @@ BEGIN
 		END		
 END
 
+--Test Case
+INSERT INTO dbo.Shipping (ShippingID, ShippingDeliveryStartDate, OrderID)
+VALUES (101, '2023-01-01', 1);
+SELECT * FROM Shipping WHERE ShippingID=101;
+
+UPDATE dbo.Shipping 
+SET ShippingDeliveryEndDate = GETDATE()
+WHERE ShippingID = 101;
+SELECT * FROM Shipping WHERE ShippingID=101;
+
 ----Update ProductUnitPrice in Product Table
 
 CREATE TRIGGER updateProductUnitPriceInProductOrders
@@ -627,6 +647,37 @@ BEGIN
 	WHERE ProductOrderDetailId = @ProductOrderDetailId;		
 END
 
+
+--  Encrytion and Decryption of Password in LogIn User
+
+ CREATE MASTER KEY
+ ENCRYPTION BY PASSWORD='Test$$Password';
+
+CREATE CERTIFICATE TestCertificate
+With SUBJECT='Password Test Certificate', EXPIRY_DATE='2025-10-9';
+
+CREATE SYMMETRIC KEY TestSymmetricKey
+WITH ALGORITHM=AES_128
+ENCRYPTION BY CERTIFICATE TestCertificate;
+
+-- Decryption
+OPEN SYMMETRIC KEY TestSymmetricKey
+DECRYPTION BY CERTIFICATE TestCertificate;
+
+UPDATE LogInUser
+		SET LogInUserEncryptedPassword = EncryptByKey(Key_GUID('SSNSymmetricKey'), LogInUserEncryptedPassword);
+		
+INSERT INTO loginuser
+VALUES(3,'aish',EncryptByKey(KEY_GUID(N'TestSymmetricKey'),convert(varbinary,'Pass123cvb')),1);
+
+SELECT * FROM LogInUser;
+
+SELECT LogInUserEncryptedPassword AS 'Encrypted Password',  
+		CONVERT(varchar, DecryptByKey(LogInUserEncryptedPassword))   
+		AS 'Decrypted Password'  
+		FROM LogInUser; 
+
+select * from loginuser;
 
 ---Views
 
